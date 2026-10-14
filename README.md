@@ -30,7 +30,7 @@ videos can be scrubbed; plain `python3 -m http.server` does not.)
 
 3. **Optional embed** — uncomment the `<details>` block under an assignment card and set the `iframe` `src` to your PDF path.
 
-4. **Customize copy** — edit the hero group name (`Null Pointers`), assignment titles, and description lines in `index.html`.
+4. **Customize copy** — edit the hero group name (`TheZucks`), assignment titles, and description lines in `index.html`.
 
 ## Structure
 
