@@ -375,6 +375,14 @@ body {
   border-radius: 8px;
 }
 
+.embed-video {
+  display: block;
+  width: 100%;
+  margin-top: 0.75rem;
+  border-radius: 8px;
+  background: #000;
+}
+
 .site-footer {
   background: var(--color-primary);
   color: rgba(247, 247, 245, 0.9);

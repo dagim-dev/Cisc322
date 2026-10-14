@@ -7,10 +7,11 @@ Static site for Software Architecture course deliverables: reports, slides, and 
 Open `index.html` in a browser, or run a simple server:
 
 ```bash
-python3 -m http.server 8080
+python3 serve.py
 ```
 
-Then visit `http://localhost:8080`.
+Then visit `http://localhost:8080`. (`serve.py` supports HTTP Range requests so
+videos can be scrubbed; plain `python3 -m http.server` does not.)
 
 ## Add real content
 

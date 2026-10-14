@@ -80,7 +80,7 @@
           <h2 class="section-title">Assignments</h2>
           <p class="section-intro">
             Each assignment includes a written report, presentation slides, and a video
-            recording. Links below are placeholders until files are added.
+            recording. Links for later assignments go live once their files are added.
           </p>
 
           <div class="assignments-grid">
@@ -88,32 +88,32 @@
               <span class="assignment-badge">A1</span>
               <h3 class="assignment-title">Conceptual Architecture</h3>
               <p class="assignment-desc">
-                Placeholder summary — describe the focus of this deliverable.
+                Conceptual architecture of WezTerm, a GPU-accelerated terminal emulator
+                and multiplexer written in Rust: eight subsystems centred on the
+                Multiplexer, using client–server and implicit-invocation styles.
               </p>
               <div class="assignment-actions">
                 <a
                   class="btn btn--primary"
-                  href="#"
-                  data-status="pending"
-                  aria-disabled="true"
+                  href="assets/a1-report.pdf"
+                  target="_blank"
+                  rel="noopener"
                   >Report (PDF)</a
                 >
-                <a
-                  class="btn btn--secondary"
-                  href="#"
-                  data-status="pending"
-                  aria-disabled="true"
-                  >Slides</a
+                <a class="btn btn--secondary" href="assets/a1-slides.pptx" download
+                  >Slides (PPTX)</a
                 >
                 <a
                   class="btn btn--secondary"
-                  href="#"
-                  data-status="pending"
-                  aria-disabled="true"
+                  href="assets/a1-video.mp4"
+                  target="_blank"
+                  rel="noopener"
                   >Video</a
                 >
+                <a class="btn btn--secondary" href="assets/a1-video.mp4" download
+                  >Download video</a
+                >
               </div>
-              <!--
               <details class="embed-block">
                 <summary>Preview report</summary>
                 <iframe
@@ -122,7 +122,15 @@
                   class="embed-frame"
                 ></iframe>
               </details>
-              -->
+              <details class="embed-block">
+                <summary>Watch presentation</summary>
+                <video
+                  class="embed-video"
+                  src="assets/a1-video.mp4"
+                  controls
+                  preload="metadata"
+                ></video>
+              </details>
             </article>
 
             <article id="assignment-2" class="assignment-card">
