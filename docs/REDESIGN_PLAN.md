@@ -140,3 +140,20 @@ Assignment and team data move into one file, `src/content.js`. Adding A2 means d
 1. Dark theme throughout, or keep a light variant? The plan assumes dark only.
 2. Keep Fraunces for the group name, or go fully Space Grotesk + JetBrains Mono?
 3. Subsystem list and dependencies for the A1 graph need to be confirmed against the report.
+
+## 12. What was built, and where it differs from the plan
+
+All six phases are implemented on `redesign/webgl-showcase`. Decisions taken on the open questions: dark theme only; Fraunces kept for the group name, Space Grotesk and JetBrains Mono elsewhere; the graph's eight subsystems and seventeen dependencies are transcribed from section 3.2 of the A1 report.
+
+Differences from the plan above:
+
+- **Team panes are HTML, not 3D meshes.** They sit in a terminal-window frame with CSS 3D tilt, and the WebGL layer draws empty pane outlines drifting behind them. Names stay sharp, selectable and readable by screen readers.
+- **The assignments section is not pinned with ScrollTrigger.** Each assignment is a full-height station that scrolls normally while the graph stays fixed in the canvas, which gives the same effect without scroll hijacking and works on phones.
+- **Graph labels are HTML projected from 3D**, so `troika-three-text` was not needed.
+- **`detect-gpu` was dropped.** It downloads benchmark data from a third-party CDN at runtime. Quality tiers are chosen from device hints and then stepped down automatically if early frames are slow.
+- **On phones the graph is a backdrop** behind the cards, without labels or hover.
+- **The report opens in a new tab on touch devices**, because phones cannot show a PDF inside a frame.
+- **The footer pull-back** returns the graph to its live state and types `$ exit`; it does not shrink the whole world into one terminal window.
+- **The boot sequence continues on its own** and can be skipped; it does not wait for a key press.
+
+Not yet done: testing on real phones and in Safari and Firefox, a Lighthouse run against the Netlify preview, and a team review of the graph against Figure 1 of the report.

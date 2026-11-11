@@ -7,224 +7,107 @@
       name="description"
       content="CISC 322 Software Architecture group project — reports, slides, and presentation videos."
     />
+    <meta name="theme-color" content="#060b16" />
     <title>TheZucks — CISC 322</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@500;700&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="/src/styles.css" />
   </head>
   <body>
-    <!-- TO ADD REAL CONTENT:
-         1. Drop files into /public/assets (e.g. public/assets/a1-report.pdf)
-         2. Replace href="#" on the corresponding <a class="btn"> below
-         3. To embed instead of link: uncomment the <details><iframe> block under that card
-    -->
+    <!-- Content (team, assignments, links) is edited in src/content.js, not here. -->
 
-    <header class="site-header">
-      <div class="container header-inner">
-        <a class="logo" href="#top">CISC 322</a>
-        <nav class="nav" aria-label="Page sections">
-          <a href="#team">Team</a>
-          <a href="#assignment-1">A1</a>
-          <a href="#assignment-2">A2</a>
-          <a href="#assignment-3">A3</a>
-        </nav>
-      </div>
+    <canvas id="world" class="world" aria-hidden="true"></canvas>
+    <div id="labels" class="labels" aria-hidden="true"></div>
+
+    <a class="skip-link" href="#team">Skip to content</a>
+
+    <header class="tabbar">
+      <a class="tabbar-home" href="#top"><span aria-hidden="true">~/</span>cisc322</a>
+      <nav class="tabs" aria-label="Page sections">
+        <a href="#team" data-tab="team">team</a>
+        <a href="#assignment-1" data-tab="assignment-1">a1</a>
+        <a href="#assignment-2" data-tab="assignment-2">a2</a>
+        <a href="#assignment-3" data-tab="assignment-3">a3</a>
+      </nav>
     </header>
+
+    <div class="rail" aria-hidden="true"><span class="rail-fill"></span></div>
 
     <main id="top">
       <section class="hero" aria-labelledby="hero-title">
-        <div class="container hero-inner">
-          <p class="hero-eyebrow">Software Architecture · Fall 2026</p>
-          <h1 id="hero-title" class="hero-title">TheZucks</h1>
-          <p class="hero-accent" aria-hidden="true"></p>
-          <p class="hero-lead">
-            Course deliverables for our software architecture group project — reports,
-            slides, and presentation recordings in one place.
-          </p>
+        <div class="hero-stage">
+          <p class="hero-eyebrow" data-site="eyebrow"></p>
+          <h1 id="hero-title" class="hero-title" data-site="group">TheZucks</h1>
+          <p class="hero-lead" data-site="lead"></p>
+          <p class="hero-hint" aria-hidden="true">scroll <span>↓</span></p>
         </div>
       </section>
 
-      <section id="team" class="section">
-        <div class="container">
-          <h2 class="section-title">Team Members</h2>
-          <p class="team-roles-summary">
-            <span class="role-pill role-pill--leader">Group leader: Armaan</span>
-            <span class="role-pill role-pill--presenter">Presenters: Dagim &amp; Rahul</span>
-          </p>
-          <ul class="team-grid">
-            <li class="team-card team-card--presenter">
-              <span class="team-role">Presenter</span>
-              Dagim
-            </li>
-            <li class="team-card team-card--leader">
-              <span class="team-role">Group leader</span>
-              Armaan
-            </li>
-            <li class="team-card">Arnav</li>
-            <li class="team-card">Avaneesh</li>
-            <li class="team-card">Ibraheem</li>
-            <li class="team-card team-card--presenter">
-              <span class="team-role">Presenter</span>
-              Rahul
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <section id="assignments" class="section section--muted">
-        <div class="container">
-          <h2 class="section-title">Assignments</h2>
-          <p class="section-intro">
-            Each assignment includes a written report, presentation slides, and a video
-            recording. Links for later assignments go live once their files are added.
-          </p>
-
-          <div class="assignments-grid">
-            <article id="assignment-1" class="assignment-card">
-              <span class="assignment-badge">A1</span>
-              <h3 class="assignment-title">Conceptual Architecture</h3>
-              <p class="assignment-desc">
-                Conceptual architecture of WezTerm, a GPU-accelerated terminal emulator
-                and multiplexer written in Rust: eight subsystems centred on the
-                Multiplexer, using client–server and implicit-invocation styles.
-              </p>
-              <div class="assignment-actions">
-                <a
-                  class="btn btn--primary"
-                  href="assets/a1-report.pdf"
-                  target="_blank"
-                  rel="noopener"
-                  >Report (PDF)</a
-                >
-                <a class="btn btn--secondary" href="assets/a1-slides.pptx" download
-                  >Slides (PPTX)</a
-                >
-                <a
-                  class="btn btn--secondary"
-                  href="assets/a1-video.mp4"
-                  target="_blank"
-                  rel="noopener"
-                  >Video</a
-                >
-                <a class="btn btn--secondary" href="assets/a1-video.mp4" download
-                  >Download video</a
-                >
-              </div>
-              <details class="embed-block">
-                <summary>Preview report</summary>
-                <iframe
-                  title="Assignment 1 report"
-                  src="assets/a1-report.pdf"
-                  class="embed-frame"
-                ></iframe>
-              </details>
-              <details class="embed-block">
-                <summary>Watch presentation</summary>
-                <video
-                  class="embed-video"
-                  src="assets/a1-video.mp4"
-                  controls
-                  preload="metadata"
-                ></video>
-              </details>
-            </article>
-
-            <article id="assignment-2" class="assignment-card">
-              <span class="assignment-badge">A2</span>
-              <h3 class="assignment-title">Concrete Architecture</h3>
-              <p class="assignment-desc">
-                Placeholder summary — describe the focus of this deliverable.
-              </p>
-              <div class="assignment-actions">
-                <a
-                  class="btn btn--primary"
-                  href="#"
-                  data-status="pending"
-                  aria-disabled="true"
-                  >Report (PDF)</a
-                >
-                <a
-                  class="btn btn--secondary"
-                  href="#"
-                  data-status="pending"
-                  aria-disabled="true"
-                  >Slides</a
-                >
-                <a
-                  class="btn btn--secondary"
-                  href="#"
-                  data-status="pending"
-                  aria-disabled="true"
-                  >Video</a
-                >
-              </div>
-              <!--
-              <details class="embed-block">
-                <summary>Preview report</summary>
-                <iframe
-                  title="Assignment 2 report"
-                  src="assets/a2-report.pdf"
-                  class="embed-frame"
-                ></iframe>
-              </details>
-              -->
-            </article>
-
-            <article id="assignment-3" class="assignment-card">
-              <span class="assignment-badge">A3</span>
-              <h3 class="assignment-title">Architectural Enhancement</h3>
-              <p class="assignment-desc">
-                Placeholder summary — describe the focus of this deliverable.
-              </p>
-              <div class="assignment-actions">
-                <a
-                  class="btn btn--primary"
-                  href="#"
-                  data-status="pending"
-                  aria-disabled="true"
-                  >Report (PDF)</a
-                >
-                <a
-                  class="btn btn--secondary"
-                  href="#"
-                  data-status="pending"
-                  aria-disabled="true"
-                  >Slides</a
-                >
-                <a
-                  class="btn btn--secondary"
-                  href="#"
-                  data-status="pending"
-                  aria-disabled="true"
-                  >Video</a
-                >
-              </div>
-              <!--
-              <details class="embed-block">
-                <summary>Preview report</summary>
-                <iframe
-                  title="Assignment 3 report"
-                  src="assets/a3-report.pdf"
-                  class="embed-frame"
-                ></iframe>
-              </details>
-              -->
-            </article>
+      <section id="team" class="section team" aria-labelledby="team-title">
+        <div class="wrap">
+          <p class="eyebrow" data-reveal>01 / team</p>
+          <h2 id="team-title" class="section-title" data-split>Team Members</h2>
+          <div class="mux" data-mux>
+            <div class="mux-bar" aria-hidden="true">
+              <span class="mux-dots"><i></i><i></i><i></i></span>
+              <span class="mux-name">thezucks — mux — 6 panes</span>
+            </div>
+            <ul class="panes" data-team></ul>
+            <p class="mux-status">
+              <span class="key key--leader">group leader</span>
+              <span class="key key--presenter">presenter</span>
+            </p>
           </div>
         </div>
       </section>
+
+      <section id="assignments" class="section assignments" aria-labelledby="assignments-title">
+        <div class="wrap">
+          <p class="eyebrow" data-reveal>02 / assignments</p>
+          <h2 id="assignments-title" class="section-title" data-split>Assignments</h2>
+          <p class="section-intro" data-reveal>
+            Each assignment includes a written report, presentation slides, and a video
+            recording. Links for later assignments go live once their files are added.
+          </p>
+        </div>
+        <div class="stations" data-assignments></div>
+      </section>
     </main>
 
-    <footer class="site-footer">
-      <div class="container footer-inner">
-        <p>CISC 322 · Software Architecture · 2026</p>
-        <p class="footer-sub">Queen's University</p>
+    <footer class="footer">
+      <div class="wrap">
+        <p class="footer-line" data-site="footer"></p>
+        <p class="footer-sub" data-site="school"></p>
+        <p class="footer-exit" aria-hidden="true"><span>$ exit</span><i class="caret"></i></p>
       </div>
     </footer>
+
+    <div id="boot" class="boot" hidden>
+      <div class="boot-log" role="status" aria-label="Loading"></div>
+      <button class="boot-skip" type="button">skip</button>
+    </div>
+
+    <dialog id="theatre" class="theatre" aria-labelledby="theatre-title">
+      <div class="theatre-bar">
+        <p id="theatre-title" class="theatre-title"></p>
+        <button class="theatre-close" type="button">close <span aria-hidden="true">esc</span></button>
+      </div>
+      <div class="theatre-body"></div>
+    </dialog>
+
+    <noscript>
+      <p class="noscript">
+        This page needs JavaScript to list the assignments. The A1 files are here:
+        <a href="assets/a1-report.pdf">report</a>,
+        <a href="assets/a1-slides.pptx">slides</a>,
+        <a href="assets/a1-video.mp4">video</a>.
+      </p>
+    </noscript>
+
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
