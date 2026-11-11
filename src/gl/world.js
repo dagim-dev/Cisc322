@@ -1,33 +1,39 @@
-// The WebGL world behind the page: one fixed canvas whose camera is driven by
-// scroll position. Scenes along the path: hero glyph field, pane frames behind
-// the team section, and the architecture graph beside the assignments.
+// The WebGL world behind the page: one fixed canvas, one continuous camera
+// journey driven by scroll. Chapters along the path (all on the -z axis):
+//   hero     z ≈ 0      the name as glyph particles
+//   tunnel   z -6..-86  a warp of glyphs
+//   hall     z = -100   six glass slabs, camera slides sideways (pinned)
+//   portals  z ≤ -140   one floating screen per assignment
+//   outro               camera pulls back; the particles regather
+// Everything is placed from DOM measurements, so the page stays the source
+// of truth for layout.
 import * as THREE from "three";
-import {
-  EffectComposer,
-  RenderPass,
-  EffectPass,
-  BloomEffect,
-  ChromaticAberrationEffect,
-  VignetteEffect,
-  NoiseEffect,
-  BlendFunction,
-} from "postprocessing";
-import { site } from "../content.js";
-import { createGlyphField } from "./glyphs.js";
-import { createGraph } from "./graph.js";
+import { site, team, assignments } from "../content.js";
+import { createParticles } from "./particles.js";
+import { createTunnel } from "./tunnel.js";
+import { createMonoliths } from "./monoliths.js";
+import { createPortals, SCREEN } from "./portal.js";
+import { createAtmosphere } from "./atmosphere.js";
+import { createPost } from "./post.js";
 
-const FOV = 50;
+const FOV = 45;
 const HALF_TAN = Math.tan(THREE.MathUtils.degToRad(FOV / 2));
-const HERO_Z = 12;
-const GRAPH_Z = -95;
-const GRAPH_CAM_Z = -78;
-const BACKGROUND = 0x060b16;
+const HERO_CAM = 12;
+const HALL_Z = -100;
+const HALL_D = 11;
+const PORTAL_Z0 = -142;
+const PORTAL_GAP = 34;
+const PORTAL_D = 9.5;
+const OUTRO_D = 10;
 
 const TIERS = {
-  high: { dpr: 2, post: true, aberration: true, cellPx: 3.4, dust: 1800 },
-  medium: { dpr: 1.5, post: true, aberration: false, cellPx: 4.2, dust: 1100 },
-  low: { dpr: 1, post: false, aberration: false, cellPx: 5.2, dust: 600 },
+  high: { dpr: 1.75, post: true, aberration: true, refract: true, particles: 384, dust: 1800, fog: 26, tunnel: [96, 40], rain: 320 },
+  medium: { dpr: 1.5, post: true, aberration: false, refract: true, particles: 256, dust: 1100, fog: 16, tunnel: [70, 30], rain: 220 },
+  low: { dpr: 1, post: false, aberration: false, refract: false, particles: 160, dust: 500, fog: 8, tunnel: [44, 22], rain: 120 },
 };
+
+const ROLE_TINT = { leader: "#7fe3ff", presenter: "#e8c468" };
+const MEMBER_TINT = "#c9b8ff";
 
 function pickTier() {
   // ?tier=high|medium|low forces a quality tier, for testing.
@@ -41,122 +47,63 @@ function pickTier() {
   return touch || small ? "medium" : "high";
 }
 
+const clamp01 = (x) => Math.min(1, Math.max(0, x));
 const smooth = (a, b, x) => {
-  const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
+  const t = clamp01((x - a) / (b - a));
   return t * t * (3 - 2 * t);
 };
+const bump = (center, width, x) => {
+  const d = Math.abs(x - center) / width;
+  return d >= 1 ? 0 : (1 - d) * (1 - d);
+};
 
-function softDot() {
-  const canvas = document.createElement("canvas");
-  canvas.width = canvas.height = 32;
-  const ctx = canvas.getContext("2d");
-  const gradient = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
-  gradient.addColorStop(0, "rgba(255,255,255,1)");
-  gradient.addColorStop(1, "rgba(255,255,255,0)");
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, 32, 32);
-  return new THREE.CanvasTexture(canvas);
+// Chapter moods. Colours are converted to linear space by THREE.Color.
+function mood(top, bottom, glow, fog, dust, accent) {
+  return {
+    top: new THREE.Color(top),
+    bottom: new THREE.Color(bottom),
+    glow: new THREE.Color(glow),
+    fog: new THREE.Color(fog),
+    dust: new THREE.Color(dust),
+    accent: new THREE.Color(accent),
+  };
 }
 
-function createDust(count) {
-  const positions = new Float32Array(count * 3);
-  for (let i = 0; i < count; i++) {
-    positions[i * 3] = (Math.random() - 0.5) * 70;
-    positions[i * 3 + 1] = (Math.random() - 0.5) * 36;
-    positions[i * 3 + 2] = 24 - Math.random() * 150;
-  }
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-  const points = new THREE.Points(
-    geometry,
-    new THREE.PointsMaterial({
-      color: 0x9dbcf0,
-      map: softDot(),
-      size: 0.16,
-      sizeAttenuation: true,
-      transparent: true,
-      opacity: 0.7,
-      depthWrite: false,
-    }),
-  );
-  points.frustumCulled = false;
-  return points;
+function tintMood(hex) {
+  const tint = new THREE.Color(hex);
+  const m = mood("#0b0a10", "#020203", "#000000", "#000000", "#000000", hex);
+  m.top.lerp(tint, 0.06);
+  m.glow.copy(tint).multiplyScalar(0.07);
+  m.fog.copy(tint).multiplyScalar(0.05);
+  m.dust.copy(tint).lerp(new THREE.Color("#ffffff"), 0.4).multiplyScalar(0.9);
+  return m;
 }
 
-function createFloor() {
-  const material = new THREE.ShaderMaterial({
-    transparent: true,
-    depthWrite: false,
-    blending: THREE.AdditiveBlending,
-    uniforms: { uColor: { value: new THREE.Color("#2f6fd0") } },
-    vertexShader: /* glsl */ `
-      varying vec3 vWorld;
-      void main() {
-        vec4 world = modelMatrix * vec4(position, 1.0);
-        vWorld = world.xyz;
-        gl_Position = projectionMatrix * viewMatrix * world;
-      }
-    `,
-    fragmentShader: /* glsl */ `
-      uniform vec3 uColor;
-      varying vec3 vWorld;
-      void main() {
-        vec2 coord = vWorld.xz / 2.5;
-        vec2 width = fwidth(coord);
-        vec2 grid = abs(fract(coord - 0.5) - 0.5) / width;
-        float line = 1.0 - min(min(grid.x, grid.y), 1.0);
-        // Far away the cells shrink below a pixel; fade out instead of filling in.
-        line *= 1.0 - smoothstep(0.25, 0.7, max(width.x, width.y));
-        float fade = smoothstep(48.0, 5.0, distance(vWorld, cameraPosition));
-        gl_FragColor = vec4(uColor * line * fade, 1.0);
-      }
-    `,
-  });
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(160, 260), material);
-  floor.rotation.x = -Math.PI / 2;
-  floor.position.set(0, -7.5, -60);
-  return floor;
+const MOODS = {
+  hero: mood("#120a1a", "#030205", "#1c0b22", "#120818", "#ffd6a0", "#ffb35c"),
+  warp: mood("#0d0920", "#020208", "#1b1050", "#0f0a26", "#c9b8ff", "#a98bff"),
+  team: mood("#06141b", "#010406", "#06303a", "#062028", "#bff3ff", "#7fe3ff"),
+  outro: mood("#140a18", "#030204", "#2a0f22", "#140812", "#ffd6a0", "#ffb35c"),
+};
+
+function mixMood(out, a, b, t) {
+  for (const key of Object.keys(out)) out[key].copy(a[key]).lerp(b[key], t);
+  return out;
 }
 
-// Empty terminal-pane outlines drifting around the team section.
-function createFrames() {
-  const positions = [];
-  const colors = [];
-  const blue = new THREE.Color("#4a8be6");
-  const gold = new THREE.Color("#e8c468");
-  for (let i = 0; i < 18; i++) {
-    const side = i % 2 ? 1 : -1;
-    const w = 3 + Math.random() * 4;
-    const h = w * 0.62;
-    const x = side * (9 + Math.random() * 13);
-    const y = (Math.random() - 0.5) * 15;
-    const z = -32 - Math.random() * 32;
-    const bar = h / 2 - 0.35;
-    const lines = [
-      [-w / 2, -h / 2, w / 2, -h / 2],
-      [w / 2, -h / 2, w / 2, h / 2],
-      [w / 2, h / 2, -w / 2, h / 2],
-      [-w / 2, h / 2, -w / 2, -h / 2],
-      [-w / 2, bar, w / 2, bar],
-    ];
-    const color = i % 5 === 0 ? gold : blue;
-    for (const [x1, y1, x2, y2] of lines) {
-      positions.push(x + x1, y + y1, z, x + x2, y + y2, z);
-      colors.push(color.r, color.g, color.b, color.r, color.g, color.b);
-    }
-  }
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
-  geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
-  const frames = new THREE.LineSegments(
-    geometry,
-    new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.75, depthWrite: false }),
-  );
-  frames.frustumCulled = false;
-  return frames;
+const docTop = (el) => el.getBoundingClientRect().top + window.scrollY;
+
+// Page y of an element's first text baseline.
+function baselineOf(el) {
+  const probe = document.createElement("span");
+  probe.style.cssText = "display:inline-block;width:0;height:0;vertical-align:baseline";
+  el.prepend(probe);
+  const y = probe.getBoundingClientRect().top + window.scrollY;
+  probe.remove();
+  return y;
 }
 
-export async function createWorld({ canvas, labelLayer }) {
+export async function createWorld({ canvas, teamRange }) {
   let tierName = pickTier();
   let tier = TIERS[tierName];
 
@@ -166,119 +113,190 @@ export async function createWorld({ canvas, labelLayer }) {
     alpha: false,
     powerPreference: "high-performance",
   });
-  renderer.setClearColor(BACKGROUND, 1);
+  renderer.setClearColor(0x040406, 1);
 
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(FOV, 1, 0.1, 220);
-  camera.position.set(0, 0, HERO_Z);
+  const camera = new THREE.PerspectiveCamera(FOV, 1, 0.1, 700);
+  camera.position.set(0, 0, HERO_CAM);
 
-  const glyphs = createGlyphField(site.group);
-  const graph = createGraph(labelLayer);
-  const dust = createDust(tier.dust);
-  const frames = createFrames();
-  scene.add(createFloor(), dust, frames, glyphs.mesh, graph.group);
+  const title = document.querySelector(".hero-title");
+  const style = getComputedStyle(title);
+  const particles = createParticles(renderer, {
+    size: tier.particles,
+    text: site.group,
+    font: { family: style.fontFamily, weight: style.fontWeight, style: style.fontStyle },
+    letterSpacing: parseFloat(style.letterSpacing) / parseFloat(style.fontSize) || 0,
+  });
+  const tunnel = createTunnel({ rings: tier.tunnel[0], perRing: tier.tunnel[1] });
+  const monoliths = createMonoliths({ tints: team.map((m) => ROLE_TINT[m.role] || MEMBER_TINT) });
+  const portals = createPortals(assignments, { rain: tier.rain });
+  const atmos = createAtmosphere({ dust: tier.dust, fog: tier.fog });
+  scene.add(atmos.group, tunnel.mesh, monoliths.group, portals.group, particles.points);
 
-  let composer = null;
-  let aberration = null;
-  function buildComposer() {
-    composer = new EffectComposer(renderer, { frameBufferType: THREE.HalfFloatType });
-    composer.addPass(new RenderPass(scene, camera));
-    const effects = [
-      new BloomEffect({ intensity: 1.15, luminanceThreshold: 0.3, luminanceSmoothing: 0.3, mipmapBlur: true, radius: 0.7 }),
-      new VignetteEffect({ darkness: 0.62, offset: 0.28 }),
-      new NoiseEffect({ blendFunction: BlendFunction.OVERLAY, premultiply: false }),
-    ];
-    effects[2].blendMode.opacity.value = 0.1;
-    aberration = new ChromaticAberrationEffect({
-      offset: new THREE.Vector2(0.0007, 0.0007),
-      radialModulation: true,
-      modulationOffset: 0.35,
-    });
-    const main = new EffectPass(camera, ...effects);
-    // Only the last pass may convert to sRGB, or colours get encoded twice.
-    main.fullscreenMaterial.encodeOutput = false;
-    composer.addPass(main);
-    composer.addPass(new EffectPass(camera, aberration));
-  }
-  if (tier.post) buildComposer();
+  let post = createPost(renderer, scene, camera, tier);
+  const refraction = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType });
+  const stationMoods = assignments.map((a) => tintMood(a.tint));
+  const current = mixMood(mood("#000", "#000", "#000", "#000", "#000", "#000"), MOODS.hero, MOODS.hero, 0);
 
-  // ---- Layout: everything that depends on the page's size ----
+  // ---- Layout ----
 
-  const view = { width: 1, height: 1, wide: true };
-  const graphCenter = new THREE.Vector3(0, 0, GRAPH_Z);
+  const view = { width: 1, height: 1, wide: true, dpr: 1, proj: 800 };
+  const buffer = new THREE.Vector2();
   let keys = [];
+  let posCurve = null;
+  let lookCurve = null;
+  let range = { start: 0, end: 1, pinned: false };
+  let panels = team.length + 1;
+  let xEnd = 0;
+  let heroH = 1;
   let stationY = [0, 1, 2];
-  let heroHeight = 1;
   let maxScroll = 1;
-  let glyphWidthPx = 0;
+  let moodKeys = [];
+  let cuts = [];
+  const heroWord = { left: 0, baseline: 0, width: 1, z: 0 };
+  const outroWord = { left: 0, baseline: 0, width: 1, z: 0 };
 
-  const docTop = (el) => el.getBoundingClientRect().top + window.scrollY;
-  const centerScroll = (el) => docTop(el) + el.offsetHeight / 2 - view.height / 2;
+  // Places a word in the world exactly over a heading, as seen from a camera
+  // looking straight down -z from `cam`, `dist` units away, at scroll `at`.
+  function placeWord(el, out, cam, dist, at) {
+    const rect = el.getBoundingClientRect();
+    const upp = (2 * dist * HALF_TAN) / view.height;
+    const left = rect.left - view.width / 2;
+    const base = baselineOf(el) - at - view.height / 2;
+    out.left = cam.x + left * upp;
+    out.baseline = cam.y - base * upp;
+    out.width = rect.width * upp;
+    out.z = cam.z - dist;
+  }
 
   function measure() {
     // A tab opened in the background can report a zero-size viewport.
     if (!window.innerWidth || !window.innerHeight) return false;
     view.width = window.innerWidth;
     view.height = window.innerHeight;
-    view.wide = view.width / view.height >= 1 && view.width >= 760;
+    view.wide = view.width >= 900 && view.width / view.height >= 1;
     camera.aspect = view.width / view.height;
     camera.updateProjectionMatrix();
 
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, tier.dpr));
+    view.dpr = Math.min(window.devicePixelRatio || 1, tier.dpr);
+    renderer.setPixelRatio(view.dpr);
     renderer.setSize(view.width, view.height, false);
-    composer?.setSize(view.width, view.height);
+    renderer.getDrawingBufferSize(buffer);
+    post?.setSize(view.width, view.height, view.dpr);
+    refraction.setSize(Math.ceil(buffer.x / 2), Math.ceil(buffer.y / 2));
+    monoliths.shared.uRes.value.copy(buffer);
+    view.proj = buffer.y / (2 * HALF_TAN);
 
-    // Hero word: placed exactly over the (transparent) h1.
-    const title = document.querySelector(".hero-title");
-    const rect = title.getBoundingClientRect();
-    if (Math.abs(rect.width - glyphWidthPx) > 2) {
-      glyphWidthPx = rect.width;
-      const unitsPerPx = (2 * HERO_Z * HALF_TAN) / view.height;
-      glyphs.layout({
-        width: rect.width * unitsPerPx,
-        centerX: (rect.left + rect.width / 2 - view.width / 2) * unitsPerPx,
-        centerY: -(docTop(title) + rect.height / 2 - view.height / 2) * unitsPerPx,
-        columns: Math.max(120, Math.min(320, Math.round(rect.width / tier.cellPx))),
-      });
-    }
+    const vh = view.height;
+    range = teamRange();
+    heroH = document.querySelector(".hero").offsetHeight;
+    maxScroll = Math.max(1, document.documentElement.scrollHeight - vh);
+    stationY = [...document.querySelectorAll(".station")].map(
+      (el) => docTop(el) + el.offsetHeight / 2 - vh / 2,
+    );
 
-    // Graph: beside the cards on wide screens, above them on narrow ones.
-    const distance = GRAPH_CAM_Z - GRAPH_Z;
-    const visibleH = 2 * distance * HALF_TAN;
-    const visibleW = visibleH * camera.aspect;
-    if (view.wide) {
-      graphCenter.set(visibleW * 0.2, 0, GRAPH_Z);
-      graph.group.scale.setScalar(Math.min(1, (visibleW * 0.5) / 10.5));
-    } else {
-      // No room beside the cards: the graph sits behind them as a backdrop.
-      graphCenter.set(0, visibleH * 0.16, GRAPH_Z);
-      graph.group.scale.setScalar(Math.min(0.9, (visibleW * 0.95) / 10.5));
-    }
-    graph.group.position.copy(graphCenter);
+    // Hero word, over the transparent heading.
+    placeWord(title, heroWord, new THREE.Vector3(0, 0, HERO_CAM), HERO_CAM, 0);
 
-    // Camera keyframes, tied to where sections sit in the page.
-    const hero = document.querySelector(".hero");
-    const stations = [...document.querySelectorAll(".station")];
-    heroHeight = hero.offsetHeight;
-    maxScroll = Math.max(1, document.documentElement.scrollHeight - view.height);
-    stationY = stations.map(centerScroll);
-    const axis = [0, 0, GRAPH_Z];
+    // Hall: when pinned, slabs are spaced exactly one screen apart at their
+    // depth, so each stays locked beside its name as the gallery slides.
+    const hallH = 2 * HALL_D * HALF_TAN;
+    const hallW = hallH * camera.aspect;
+    const spacing = range.pinned ? hallW : Math.max(6, hallW * 0.95);
+    panels = team.length + 1;
+    xEnd = (panels - 1) * spacing;
+    monoliths.layout({ spacing, offsetX: range.pinned ? hallW * 0.2 : 0, z: HALL_Z, first: 1 });
+
+    // Portals: beside the text on wide screens, above it on narrow ones.
+    const pH = 2 * PORTAL_D * HALF_TAN;
+    const pW = pH * camera.aspect;
+    const portalZ = assignments.map((_, i) => PORTAL_Z0 - i * PORTAL_GAP);
+    portals.layout(
+      portalZ.map((z) => {
+        const scale = view.wide ? Math.min(1, (pW * 0.5) / SCREEN.w) : Math.min(1, (pW * 0.9) / SCREEN.w);
+        const x = view.wide ? xEnd + pW * 0.22 : xEnd;
+        const y = view.wide ? 0 : pH / 2 - (SCREEN.h * scale) / 2 - pH * 0.12;
+        return { position: new THREE.Vector3(x, y, z), scale };
+      }),
+    );
+
+    // Outro: the camera pulls back from the last portal; the name regathers
+    // over the outro's (transparent) heading.
+    const lastZ = portalZ[portalZ.length - 1];
+    const outroCam = new THREE.Vector3(xEnd, 0.8, lastZ + 6 + OUTRO_D);
+    placeWord(document.querySelector(".outro-mark"), outroWord, outroCam, OUTRO_D, maxScroll);
+
+    // Camera path keyframes, tied to where sections sit in the page.
+    const station = (i, dx, dy) => ({
+      y: stationY[i],
+      pos: [xEnd + dx, dy, portalZ[i] + PORTAL_D],
+      look: [xEnd, 0, portalZ[i]],
+    });
     keys = [
-      { y: 0, pos: [0, 0, HERO_Z], look: [0, 0, 0] },
-      { y: heroHeight * 0.72, pos: [0, 0, -10], look: [0, 0, -30] },
-      { y: centerScroll(document.getElementById("team")), pos: [0, 0, -30], look: [0, 0, -50] },
-      { y: stationY[0], pos: [0, 0, GRAPH_CAM_Z], look: axis },
-      { y: stationY[1], pos: [1.3, 0.4, GRAPH_CAM_Z + 1], look: axis },
-      { y: stationY[2], pos: [-1.4, 0.2, GRAPH_CAM_Z - 0.5], look: axis },
-      { y: maxScroll, pos: [0, 3.5, GRAPH_CAM_Z + 13], look: graphCenter.toArray() },
+      { y: 0, pos: [0, 0, HERO_CAM], look: [0, 0, 0] },
+      { y: heroH * 0.8, pos: [0, 0, 1.5], look: [0, 0, -30] },
+      { y: range.start, pos: [0, 0, HALL_Z + HALL_D], look: [0, 0, HALL_Z] },
+      { y: range.end, pos: [xEnd, 0, HALL_Z + HALL_D], look: [xEnd, 0, HALL_Z] },
+      station(0, 0, 0),
+      station(1, 0.5, 0.25),
+      station(2, -0.4, 0.1),
+      { y: maxScroll, pos: outroCam.toArray(), look: [xEnd, 0.8, lastZ + 6] },
     ];
     for (let i = 1; i < keys.length; i++) keys[i].y = Math.max(keys[i].y, keys[i - 1].y + 1);
+    posCurve = new THREE.CatmullRomCurve3(keys.map((k) => new THREE.Vector3(...k.pos)), false, "centripetal");
+    lookCurve = new THREE.CatmullRomCurve3(keys.map((k) => new THREE.Vector3(...k.look)), false, "centripetal");
+
+    moodKeys = [
+      { y: 0, mood: MOODS.hero },
+      { y: heroH * 0.9, mood: MOODS.warp },
+      { y: range.start, mood: MOODS.team },
+      { y: range.end, mood: MOODS.team },
+      ...stationY.map((y, i) => ({ y, mood: stationMoods[i] })),
+      { y: maxScroll, mood: MOODS.outro },
+    ];
+    for (let i = 1; i < moodKeys.length; i++) moodKeys[i].y = Math.max(moodKeys[i].y, moodKeys[i - 1].y + 1);
+
+    // Scroll positions where one chapter dissolves into the next.
+    cuts = [range.start - vh * 0.55, ...stationY.slice(1).map((y, i) => (y + stationY[i]) / 2)];
+
+    atmos.layout({
+      fogMin: new THREE.Vector3(-14, -7, lastZ - 30),
+      fogMax: new THREE.Vector3(xEnd + 14, 5, HALL_Z + 6),
+    });
     return true;
   }
 
-  // ---- Per-frame state ----
+  // ---- Camera path ----
 
-  const pointer = { x: 0, y: 0, sx: 0, sy: 0, moved: false, active: false };
+  const target = { pos: new THREE.Vector3(0, 0, HERO_CAM), look: new THREE.Vector3() };
+  function pathAt(y) {
+    // Inside the team gallery the camera slides in lockstep with the panels.
+    if (y >= range.start && y <= range.end) {
+      const p = (y - range.start) / Math.max(1, range.end - range.start);
+      target.pos.set(p * xEnd, 0, HALL_Z + HALL_D);
+      target.look.set(p * xEnd, 0, HALL_Z);
+      return;
+    }
+    let i = 0;
+    while (i < keys.length - 2 && y > keys[i + 1].y) i++;
+    const local = clamp01((y - keys[i].y) / (keys[i + 1].y - keys[i].y));
+    // Ease within each segment, so the camera settles on each subject.
+    const eased = local * local * (3 - 2 * local);
+    const t = (i + (local * 0.35 + eased * 0.65)) / (keys.length - 1);
+    posCurve.getPoint(t, target.pos);
+    lookCurve.getPoint(t, target.look);
+  }
+
+  function moodAt(y) {
+    let i = 0;
+    while (i < moodKeys.length - 2 && y > moodKeys[i + 1].y) i++;
+    const t = smooth(moodKeys[i].y, moodKeys[i + 1].y, y);
+    return mixMood(current, moodKeys[i].mood, moodKeys[i + 1].mood, t);
+  }
+
+  // ---- Pointer ----
+
+  const pointer = { x: 0, y: 0, sx: 0, sy: 0, active: false };
   const finePointer = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
   if (finePointer) {
     window.addEventListener(
@@ -286,56 +304,51 @@ export async function createWorld({ canvas, labelLayer }) {
       (event) => {
         pointer.x = (event.clientX / view.width) * 2 - 1;
         pointer.y = -((event.clientY / view.height) * 2 - 1);
-        pointer.moved = true;
         pointer.active = true;
       },
       { passive: true },
     );
+    document.addEventListener("pointerleave", () => (pointer.active = false));
   }
-
-  const target = { pos: new THREE.Vector3(0, 0, HERO_Z), look: new THREE.Vector3() };
-  const current = { pos: new THREE.Vector3(0, 0, HERO_Z), look: new THREE.Vector3() };
-  const a = new THREE.Vector3();
-  const b = new THREE.Vector3();
   const raycaster = new THREE.Raycaster();
   const ndc = new THREE.Vector2();
+  const mouseWorld = new THREE.Vector3(999, 999, 0);
+  const mousePrev = new THREE.Vector3(999, 999, 0);
+  const mouseVel = new THREE.Vector3();
 
-  function cameraAt(scrollY) {
-    let i = 0;
-    while (i < keys.length - 2 && scrollY > keys[i + 1].y) i++;
-    const from = keys[i];
-    const to = keys[i + 1];
-    const t = smooth(from.y, to.y, scrollY);
-    target.pos.lerpVectors(a.fromArray(from.pos), b.fromArray(to.pos), t);
-    target.look.lerpVectors(a.fromArray(from.look), b.fromArray(to.look), t);
-  }
+  // ---- Fly-in toward a portal (before the theatre opens) ----
+
+  const fly = { index: -1, goal: 0, w: 0, pos: new THREE.Vector3(), look: new THREE.Vector3() };
+
+  // ---- Frame loop ----
 
   let running = false;
   let paused = false;
-  let startedAt = null;
+  let started = 0;
   let last = performance.now();
   let time = 0;
   let frame = 0;
   let slow = 0;
   let sampled = 0;
+  let speed = 0;
+  const prevPos = new THREE.Vector3(0, 0, HERO_CAM);
+  const near = assignments.map(() => 0);
 
   function setTier(name) {
     tierName = name;
     tier = TIERS[name];
-    if (!tier.post) composer = null;
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, tier.dpr));
-    renderer.setSize(view.width, view.height, false);
-    composer?.setSize(view.width, view.height);
+    if (!tier.post) post = null;
+    measure();
   }
 
-  function render(now) {
+  function tick() {
     if (!running) return;
-    requestAnimationFrame(render);
+    const now = performance.now();
     if (paused || document.hidden || (!keys.length && !measure())) {
       last = now;
       return;
     }
-    const dt = Math.min(0.1, (now - last) / 1000);
+    const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
     time += dt;
     frame++;
@@ -354,75 +367,119 @@ export async function createWorld({ canvas, labelLayer }) {
       }
     }
 
-    const scrollY = window.scrollY;
-    cameraAt(scrollY);
-    const ease = 1 - Math.exp(-dt * 5);
-    current.pos.lerp(target.pos, ease);
-    current.look.lerp(target.look, ease);
-    pointer.sx += (pointer.x - pointer.sx) * (1 - Math.exp(-dt * 4));
-    pointer.sy += (pointer.y - pointer.sy) * (1 - Math.exp(-dt * 4));
-    camera.position.set(current.pos.x + pointer.sx * 0.5, current.pos.y + pointer.sy * 0.3, current.pos.z);
-    camera.lookAt(current.look);
+    const y = window.scrollY;
+    const vh = view.height;
+    pathAt(y);
 
-    // Hero glyphs
-    const u = glyphs.uniforms;
-    u.uTime.value = time;
-    u.uAssemble.value = startedAt === null ? 0 : Math.min(1, (now - startedAt) / 2000);
-    u.uScatter.value = Math.min(1, scrollY / (heroHeight * 0.62));
-    glyphs.mesh.visible = camera.position.z > -26;
-    if (pointer.active && camera.position.z > 1) {
-      ndc.set(pointer.x, pointer.y);
-      raycaster.setFromCamera(ndc, camera);
-      const ray = raycaster.ray;
-      const t = -ray.origin.z / ray.direction.z;
-      u.uMouse.value.set(ray.origin.x + ray.direction.x * t, ray.origin.y + ray.direction.y * t);
-    } else {
-      u.uMouse.value.set(999, 999);
+    // Fly toward a portal's screen when the theatre is about to open.
+    fly.w += (fly.goal - fly.w) * (1 - Math.exp(-dt * 5));
+    if (fly.w > 0.001 && fly.index >= 0) {
+      const node = portals.portals[fly.index].node;
+      node.localToWorld(fly.pos.set(0, 0, 3.4));
+      node.getWorldPosition(fly.look);
+      const e = fly.w * fly.w * (3 - 2 * fly.w);
+      target.pos.lerp(fly.pos, e);
+      target.look.lerp(fly.look, e);
     }
 
-    // Ambient
-    dust.rotation.z = time * 0.006;
-    frames.position.y = Math.sin(time * 0.25) * 0.5;
-    frames.material.opacity = 0.75 * smooth(-4, -18, camera.position.z) * smooth(-74, -58, camera.position.z);
+    pointer.sx += ((pointer.active ? pointer.x : 0) - pointer.sx) * (1 - Math.exp(-dt * 3));
+    pointer.sy += ((pointer.active ? pointer.y : 0) - pointer.sy) * (1 - Math.exp(-dt * 3));
+    camera.position.set(target.pos.x + pointer.sx * 0.35, target.pos.y + pointer.sy * 0.2, target.pos.z);
+    camera.lookAt(target.look);
 
-    // Architecture graph
-    const s =
-      scrollY <= stationY[1]
-        ? smooth(stationY[0], stationY[1], scrollY)
-        : 1 + smooth(stationY[1], stationY[2], scrollY);
-    const outro = smooth(stationY[2] + (maxScroll - stationY[2]) * 0.25, maxScroll, scrollY);
-    const lit = Math.max(1 - smooth(0.3, 0.75, s), outro);
-    const ghost = smooth(1.35, 1.85, s) * (1 - outro);
-    const vis = smooth(-42, -64, camera.position.z);
-    graph.group.rotation.y = Math.sin(time * 0.18) * 0.32 + pointer.sx * 0.25;
-    graph.group.rotation.x = -pointer.sy * 0.12;
-    if (pointer.moved) {
-      pointer.moved = false;
-      let hit = null;
-      if (vis > 0.7 && lit > 0.6) {
+    const moved = camera.position.distanceTo(prevPos) / Math.max(dt, 1e-3);
+    prevPos.copy(camera.position);
+    speed += (moved - speed) * (1 - Math.exp(-dt * 6));
+    const focus = camera.position.distanceTo(target.look);
+    const m = moodAt(y);
+
+    // ---- Hero particles ----
+    const outro = smooth(stationY[2], maxScroll - vh * 0.15, y);
+    const inOutro = outro > 0.02;
+    const word = inOutro ? outroWord : heroWord;
+    particles.layout(word);
+    const sim = particles.sim;
+    const age = (now - started) / 1000;
+    sim.uForm.value = smooth(0.2, 1.8, age);
+    sim.uPour.value = inOutro ? 0 : smooth(heroH * 0.04, heroH * 1.05, y);
+    sim.uTravel.value = outro;
+    const particlesLive = camera.position.z > -40 || inOutro;
+    particles.points.visible = particlesLive;
+    if (particlesLive) {
+      if (pointer.active) {
         ndc.set(pointer.x, pointer.y);
         raycaster.setFromCamera(ndc, camera);
-        hit = raycaster.intersectObjects(graph.hitTargets, false)[0]?.object.userData.id ?? null;
+        const ray = raycaster.ray;
+        const t = (word.z - ray.origin.z) / ray.direction.z;
+        if (t > 0) mouseWorld.copy(ray.origin).addScaledVector(ray.direction, t);
+        if (mousePrev.x !== 999) {
+          const v = mouseWorld.clone().sub(mousePrev).divideScalar(Math.max(dt, 1e-3));
+          mouseVel.lerp(v, 0.5);
+        }
+        mousePrev.copy(mouseWorld);
+      } else {
+        mouseVel.multiplyScalar(0.9);
       }
-      graph.setHovered(hit);
+      sim.uMouse.value.copy(mouseWorld);
+      sim.uMouseVel.value.copy(mouseVel).clampLength(0, 30);
+      sim.uMouseOn.value = pointer.active ? 1 : 0;
+      particles.uniforms.uProj.value = view.proj;
+      particles.uniforms.uFocus.value = focus;
+      particles.uniforms.uAperture.value = 0.9 * view.dpr;
+      particles.step(dt, time);
     }
-    graph.update({
-      time,
-      lit,
-      ghost,
-      vis,
-      camera,
-      width: view.width,
-      height: view.height,
-      showLabels: view.wide && vis > 0.5 && outro < 0.5,
-    });
 
-    if (composer) {
-      aberration.blendMode.opacity.value = tier.aberration ? 1 : 0;
-      composer.render(dt);
-    } else {
-      renderer.render(scene, camera);
+    // ---- Tunnel ----
+    const tunnelOn = smooth(heroH * 0.25, heroH * 0.95, y) * (1 - smooth(range.start - vh * 0.3, range.start + vh * 0.2, y));
+    tunnel.mesh.visible = tunnelOn > 0.002;
+    tunnel.uniforms.uOpacity.value = tunnelOn;
+    tunnel.uniforms.uSpeed.value = speed;
+    tunnel.uniforms.uTime.value = time;
+
+    // ---- Hall ----
+    // The slabs are only worth drawing while they are in front of the camera.
+    const hallOn = camera.position.z < -55 && camera.position.z > HALL_Z + 1;
+    monoliths.group.visible = hallOn;
+    if (hallOn) {
+      const p = clamp01((y - range.start) / Math.max(1, range.end - range.start));
+      monoliths.update({ time, focus: p * (panels - 1), first: 1, pointer: { x: pointer.sx, y: pointer.sy } });
     }
+
+    // ---- Portals ----
+    portals.group.visible = camera.position.z < -95;
+    stationY.forEach((sy, i) => (near[i] = 1 - smooth(vh * 0.2, vh * 1.1, Math.abs(y - sy))));
+    if (fly.index >= 0) near[fly.index] = Math.max(near[fly.index], fly.w);
+    portals.update({ time, near, proj: view.proj, fade: 1 - outro });
+
+    // ---- Air, light and the chapter dissolve ----
+    atmos.update({ time, camera, mood: m, proj: view.proj, focus, aperture: 0.7 * view.dpr });
+    if (post) {
+      let cut = 0;
+      for (const c of cuts) cut = Math.max(cut, bump(c, vh * 0.4, y));
+      post.transition.amount = cut * 0.42;
+      post.transition.color.copy(m.accent).multiplyScalar(1.6);
+    }
+
+    // Refraction source for the glass: the scene without the slabs.
+    const refract = hallOn && tier.refract;
+    monoliths.shared.uHasScene.value = refract ? 1 : 0;
+    monoliths.shared.uBase.value.copy(m.fog).multiplyScalar(2.5).add(m.bottom);
+    if (refract) {
+      monoliths.setSlabsVisible(false);
+      const showParticles = particles.points.visible;
+      particles.points.visible = false;
+      renderer.setRenderTarget(refraction);
+      // The composer turns autoClear off, so clear by hand.
+      renderer.clear();
+      renderer.render(scene, camera);
+      renderer.setRenderTarget(null);
+      particles.points.visible = showParticles;
+      monoliths.setSlabsVisible(true);
+      monoliths.shared.tScene.value = refraction.texture;
+    }
+
+    if (post) post.render(dt);
+    else renderer.render(scene, camera);
   }
 
   let resizeTimer = 0;
@@ -433,29 +490,45 @@ export async function createWorld({ canvas, labelLayer }) {
   window.addEventListener("resize", queueMeasure);
   // Also catches layout changes that do not resize the window.
   new ResizeObserver(queueMeasure).observe(document.body);
-  // Web fonts and late layout can move sections after the first measure.
   document.fonts?.ready.then(() => setTimeout(measure, 50));
   window.addEventListener("load", () => setTimeout(measure, 300));
 
   measure();
-  camera.lookAt(0, 0, 0);
+  particles.layout(heroWord);
   renderer.compile(scene, camera);
 
   return {
+    measure,
+    tick,
     start() {
       if (running) return;
       measure();
+      particles.layout(heroWord);
+      particles.prime();
       running = true;
-      startedAt = performance.now();
-      last = startedAt;
+      started = performance.now();
+      last = started;
       time = 0;
-      requestAnimationFrame(render);
     },
     setPaused(value) {
       paused = value;
+      if (value) portals.pauseAll();
+    },
+    focusPortal(index) {
+      if (!(index >= 0) || !portals.portals[index] || paused) return Promise.resolve();
+      fly.index = index;
+      fly.goal = 1;
+      return new Promise((resolve) => setTimeout(resolve, 650));
+    },
+    releasePortal() {
+      fly.goal = 0;
     },
     get tier() {
       return tierName;
+    },
+    // For debugging in development.
+    get debug() {
+      return { range, xEnd, keys, stationY, maxScroll, camera: camera.position.toArray(), view, renderer, refraction, monoliths, portals, scene };
     },
   };
 }

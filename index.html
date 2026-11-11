@@ -7,12 +7,12 @@
       name="description"
       content="CISC 322 Software Architecture group project — reports, slides, and presentation videos."
     />
-    <meta name="theme-color" content="#060b16" />
+    <meta name="theme-color" content="#040406" />
     <title>TheZucks — CISC 322</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@500;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter+Tight:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="/src/styles.css" />
@@ -21,80 +21,83 @@
     <!-- Content (team, assignments, links) is edited in src/content.js, not here. -->
 
     <canvas id="world" class="world" aria-hidden="true"></canvas>
-    <div id="labels" class="labels" aria-hidden="true"></div>
+    <div class="atmos" aria-hidden="true"></div>
 
     <a class="skip-link" href="#team">Skip to content</a>
 
-    <header class="tabbar">
-      <a class="tabbar-home" href="#top"><span aria-hidden="true">~/</span>cisc322</a>
-      <nav class="tabs" aria-label="Page sections">
-        <a href="#team" data-tab="team">team</a>
-        <a href="#assignment-1" data-tab="assignment-1">a1</a>
-        <a href="#assignment-2" data-tab="assignment-2">a2</a>
-        <a href="#assignment-3" data-tab="assignment-3">a3</a>
+    <header class="top">
+      <a class="wordmark" href="#top" data-magnetic><span data-site="group">TheZucks</span></a>
+      <nav class="chapters" aria-label="Chapters">
+        <a href="#top" data-chapter="top"><span class="num">01</span><span class="name">intro</span></a>
+        <a href="#team" data-chapter="team"><span class="num">02</span><span class="name">team</span></a>
+        <a href="#work" data-chapter="work"><span class="num">03</span><span class="name">work</span></a>
+        <a href="#outro" data-chapter="outro"><span class="num">04</span><span class="name">end</span></a>
       </nav>
+      <button class="sound" type="button" aria-pressed="false" hidden>
+        <span class="sound-bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        <span class="sound-label">sound off</span>
+      </button>
     </header>
 
-    <div class="rail" aria-hidden="true"><span class="rail-fill"></span></div>
+    <main>
+      <section id="top" class="hero" aria-labelledby="hero-title">
+        <p class="hero-eyebrow mono" data-site="eyebrow"></p>
+        <h1 id="hero-title" class="hero-title" data-site="group">TheZucks</h1>
+        <p class="hero-lead" data-site="lead"></p>
+        <p class="hero-hint mono" aria-hidden="true"><i></i>scroll</p>
+      </section>
 
-    <main id="top">
-      <section class="hero" aria-labelledby="hero-title">
-        <div class="hero-stage">
-          <p class="hero-eyebrow" data-site="eyebrow"></p>
-          <h1 id="hero-title" class="hero-title" data-site="group">TheZucks</h1>
-          <p class="hero-lead" data-site="lead"></p>
-          <p class="hero-hint" aria-hidden="true">scroll <span>↓</span></p>
+      <section class="warp" aria-label="In short">
+        <div class="warp-inner">
+          <p class="statement" data-statement></p>
         </div>
       </section>
 
-      <section id="team" class="section team" aria-labelledby="team-title">
-        <div class="wrap">
-          <p class="eyebrow" data-reveal>01 / team</p>
-          <h2 id="team-title" class="section-title" data-split>Team Members</h2>
-          <div class="mux" data-mux>
-            <div class="mux-bar" aria-hidden="true">
-              <span class="mux-dots"><i></i><i></i><i></i></span>
-              <span class="mux-name">thezucks — mux — 6 panes</span>
-            </div>
-            <ul class="panes" data-team></ul>
-            <p class="mux-status">
-              <span class="key key--leader">group leader</span>
-              <span class="key key--presenter">presenter</span>
-            </p>
+      <section id="team" class="team" aria-labelledby="team-title">
+        <div class="team-track" data-team-track>
+          <div class="panel panel--intro">
+            <p class="eyebrow mono">02 — team</p>
+            <h2 id="team-title" class="display team-title">The <em>team</em></h2>
+            <p class="team-hint mono" aria-hidden="true">keep scrolling <span>→</span></p>
           </div>
+          <ol class="members" data-team></ol>
         </div>
       </section>
 
-      <section id="assignments" class="section assignments" aria-labelledby="assignments-title">
-        <div class="wrap">
-          <p class="eyebrow" data-reveal>02 / assignments</p>
-          <h2 id="assignments-title" class="section-title" data-split>Assignments</h2>
-          <p class="section-intro" data-reveal>
-            Each assignment includes a written report, presentation slides, and a video
-            recording. Links for later assignments go live once their files are added.
+      <section id="work" class="work" aria-labelledby="work-title">
+        <header class="work-head">
+          <p class="eyebrow mono">03 — work</p>
+          <h2 id="work-title" class="display work-title">Assign<em>ments</em></h2>
+          <p class="work-lede">
+            Each assignment has a written report, presentation slides, and a video recording.
+            Later assignments light up once their files are added.
           </p>
-        </div>
+        </header>
         <div class="stations" data-assignments></div>
       </section>
     </main>
 
-    <footer class="footer">
-      <div class="wrap">
-        <p class="footer-line" data-site="footer"></p>
-        <p class="footer-sub" data-site="school"></p>
-        <p class="footer-exit" aria-hidden="true"><span>$ exit</span><i class="caret"></i></p>
+    <footer id="outro" class="outro">
+      <p class="outro-mark display" data-site="group">TheZucks</p>
+      <div class="outro-bar">
+        <p class="mono" data-site="footer"></p>
+        <a class="outro-top mono" href="#top" data-top data-magnetic>back to top <span aria-hidden="true">↑</span></a>
       </div>
     </footer>
 
-    <div id="boot" class="boot" hidden>
-      <div class="boot-log" role="status" aria-label="Loading"></div>
-      <button class="boot-skip" type="button">skip</button>
+    <div id="intro" class="intro" hidden>
+      <p class="intro-name mono"><span data-site="group">TheZucks</span> — loading</p>
+      <p class="intro-count mono" role="status" aria-label="Loading"><span>000</span></p>
+      <span class="intro-glyph mono" aria-hidden="true"></span>
+      <button class="intro-skip mono" type="button">skip</button>
     </div>
+
+    <div class="cursor" aria-hidden="true"><i class="cursor-ring"></i><i class="cursor-dot"></i></div>
 
     <dialog id="theatre" class="theatre" aria-labelledby="theatre-title">
       <div class="theatre-bar">
-        <p id="theatre-title" class="theatre-title"></p>
-        <button class="theatre-close" type="button">close <span aria-hidden="true">esc</span></button>
+        <p id="theatre-title" class="theatre-title mono"></p>
+        <button class="theatre-close mono" type="button">close <span aria-hidden="true">esc</span></button>
       </div>
       <div class="theatre-body"></div>
     </dialog>
