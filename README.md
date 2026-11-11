@@ -1,39 +1,57 @@
 # CISC 322 Group Project Site
 
-Static site for Software Architecture course deliverables: reports, slides, and presentation videos.
+Site for TheZucks' Software Architecture course deliverables: reports, slides, and presentation videos. Built with Vite and deployed on Netlify.
 
-## View locally
+## Run locally
 
-Open `index.html` in a browser, or run a simple server:
+Requires Node 22 or newer.
 
 ```bash
-python3 serve.py
+npm install
 ```
 
-Then visit `http://localhost:8080`. (`serve.py` supports HTTP Range requests so
-videos can be scrubbed; plain `python3 -m http.server` does not.)
+```bash
+npm run dev
+```
+
+Then visit `http://localhost:8080`. To check the production build instead:
+
+```bash
+npm run build
+```
+
+```bash
+npm run preview
+```
+
+## Deploy
+
+Netlify builds every push using `netlify.toml`: it runs `npm run build` and publishes `dist/`. Pushes to `main` update the live site.
 
 ## Add real content
 
-1. **Put files in `assets/`** (suggested names):
-   - `a1-report.pdf`, `a1-slides.pdf` (or `.pptx` link externally)
+1. **Put files in `public/assets/`** (suggested names):
+   - `a1-report.pdf`, `a1-slides.pdf` (or `.pptx`)
    - `a2-report.pdf`, …
-   - Videos: `.mp4` in `assets/` or use YouTube/Vimeo URLs
+   - Videos: `.mp4` in `public/assets/` or use YouTube/Vimeo URLs
 
-2. **Update links in `index.html`** — for each assignment card, change the `href` on the three buttons:
+   Files there are served at `/assets/...`, so links in the page stay `assets/a2-report.pdf`.
+
+2. **Update links in `index.html`** — for each assignment card, change the `href` on the buttons:
 
    ```html
-   <a class="btn btn--primary" href="assets/a1-report.pdf">Report (PDF)</a>
+   <a class="btn btn--primary" href="assets/a2-report.pdf">Report (PDF)</a>
    ```
 
    Remove `data-status="pending"` and `aria-disabled="true"` when the link is real.
 
 3. **Optional embed** — uncomment the `<details>` block under an assignment card and set the `iframe` `src` to your PDF path.
 
-4. **Customize copy** — edit the hero group name (`TheZucks`), assignment titles, and description lines in `index.html`.
-
 ## Structure
 
 - `index.html` — page content
-- `styles.css` — layout and Queen's-inspired blue/gold theme
-- `assets/` — PDFs, slides, and media files
+- `src/styles.css` — stylesheet entry (Tailwind plus the current theme)
+- `src/legacy.css` — the current Queen's-inspired blue/gold theme
+- `src/main.js` — JavaScript entry
+- `public/assets/` — PDFs, slides, and media files
+- `docs/REDESIGN_PLAN.md` — plan for the WebGL redesign

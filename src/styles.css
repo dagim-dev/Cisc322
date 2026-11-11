@@ -1,0 +1,6 @@
+/* Tailwind v4 without Preflight for now: the reset would change the current
+   design. Preflight comes in with the Phase 1 design system. */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+@import "./legacy.css";
