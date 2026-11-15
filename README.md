@@ -1,6 +1,37 @@
 # CISC 322 Group Project Site
 
-Site for TheZucks' Software Architecture course deliverables: reports, slides, and presentation videos. It is a scroll-driven WebGL journey ("Phosphor": light made of terminal glyphs, a nod to our project subject, WezTerm), built with Vite and deployed on Netlify.
+**Live site: [cisc322.netlify.app](https://cisc322.netlify.app)**
+
+The home for TheZucks' deliverables in CISC 322 (Software Architecture) at Queen's University, Fall 2026. Our project studies the architecture of **[WezTerm](https://github.com/wezterm/wezterm)**, the GPU-accelerated terminal emulator written in Rust. This site collects each assignment's report, slides, and presentation video in one place.
+
+Instead of a plain list of files, the site is a scroll-driven 3D journey called "Phosphor". It is built from light made of terminal glyphs, using the same glyph-atlas technique WezTerm uses to draw text on the GPU.
+
+## Deliverables
+
+| | Assignment | Status |
+| --- | --- | --- |
+| A1 | **Conceptual Architecture**: WezTerm's major subsystems, how they work together, and the architectural styles behind them | Report, slides, and video live |
+| A2 | **Concrete Architecture**: the architecture recovered from WezTerm's source code | Coming soon |
+| A3 | **Architectural Enhancement**: a proposed enhancement and its effect on the architecture | Coming soon |
+
+## Team
+
+Dagim (presenter) · Armaan (group leader) · Arnav · Avaneesh · Ibraheem · Rahul (presenter)
+
+## Built with
+
+- **Three.js** for the WebGL world, with **postprocessing** for effects
+- **GSAP** and **Lenis** for scroll-driven animation and smooth scrolling
+- **Tailwind CSS v4** for styling
+- **Vite** for the build, deployed on **Netlify**
+
+## Features
+
+- Scroll-driven camera path through a chapter per assignment, each with its own colour
+- The group name rendered as GPU particles, plus glass slabs, a glyph tunnel, and floating video screens
+- In-page overlay for watching videos and reading reports
+- Automatic graphics quality tiers, and a static fallback page when "reduce motion" is on or WebGL isn't available
+- All content driven from one file, so teammates can publish deliverables without touching HTML or 3D code
 
 ## Run locally
 
@@ -52,16 +83,21 @@ All content lives in `src/content.js`. Nobody needs to edit HTML or the 3D code.
 
 ## Structure
 
-- `index.html` — page skeleton
-- `src/content.js` — all text, team and assignment links
-- `src/styles.css` — design tokens and styles (Tailwind v4)
-- `src/main.js` — start-up: content, intro counter, loading the WebGL world
-- `src/dom.js` — builds the team panels and assignment stations from the content file
-- `src/scroll.js` — smooth scrolling (Lenis), text reveals and the pinned team gallery (GSAP)
-- `src/intro.js`, `src/theatre.js`, `src/cursor.js`, `src/sound.js` — loading counter; video and report overlay; custom cursor; optional ambient sound
-- `src/gl/` — the Three.js world: `world.js` (camera path, chapters, quality tiers), `particles.js` (the name as GPU particles), `tunnel.js`, `monoliths.js` (glass slabs), `portal.js` (assignment screens), `atmosphere.js` (sky, dust, fog), `post.js` and `transitions.js` (effects)
-- `public/assets/` — PDFs, slides, and media files
-- `docs/REDESIGN_PLAN.md` — the design plan this site was built from
+- `index.html`: page skeleton
+- `src/content.js`: all text, team and assignment links
+- `src/styles.css`: design tokens and styles (Tailwind v4)
+- `src/main.js`: start-up, covering content, the intro counter, and loading the WebGL world
+- `src/dom.js`: builds the team panels and assignment stations from the content file
+- `src/scroll.js`: smooth scrolling (Lenis), text reveals and the pinned team gallery (GSAP)
+- `src/intro.js`, `src/theatre.js`, `src/cursor.js`, `src/sound.js`: loading counter; video and report overlay; custom cursor; optional ambient sound
+- `src/gl/`: the Three.js world
+  - `world.js`: camera path, chapters, quality tiers
+  - `glyphs.js`: the terminal-glyph texture atlas shared across the world
+  - `particles.js`: the name as GPU particles
+  - `tunnel.js`, `monoliths.js` (glass slabs), `portal.js` (assignment screens), `atmosphere.js` (sky, dust, fog)
+  - `post.js` and `transitions.js`: effects
+- `public/assets/`: PDFs, slides, and media files
+- `docs/REDESIGN_PLAN.md`: the design plan this site was built from
 
 ## Behaviour worth knowing
 
