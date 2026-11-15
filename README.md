@@ -11,7 +11,7 @@ Instead of a plain list of files, the site is a scroll-driven 3D journey called 
 | | Assignment | Status |
 | --- | --- | --- |
 | A1 | **Conceptual Architecture**: WezTerm's major subsystems, how they work together, and the architectural styles behind them | Report, slides, and video live |
-| A2 | **Concrete Architecture**: the architecture recovered from WezTerm's source code | Coming soon |
+| A2 | **Concrete Architecture**: the architecture recovered from WezTerm's source code | Report, slides, and video live |
 | A3 | **Architectural Enhancement**: a proposed enhancement and its effect on the architecture | Coming soon |
 
 ## Team
